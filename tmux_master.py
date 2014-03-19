@@ -20,12 +20,15 @@ tmux = psh.Program("tmux", _defer=False)
 # TODO: include master config
 # TODO: run slaves with user config
 MASTER_CONFIG = (
+    # Use C-a as a prefix key in master session
     "set prefix C-a",
     "unbind-key C-b",
     "bind-key C-a send-prefix",
 
-    "set-option -g status on",
+    # Windows should be named after their host names
     "set-option -g allow-rename off",
+
+    # To see errors when we fail to open a session on a host
     "set-option -g set-remain-on-exit on",
 )
 
