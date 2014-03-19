@@ -73,7 +73,12 @@ def parse_args():
     parser.add_argument("-k", "--kill", action="store_true", help="kill the session")
     parser.add_argument("hosts", nargs="+", help="host names")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if re.search("^[-_.a-zA-Z0-9]+$", args.session) is None:
+        parser.error("Invalid session name.")
+
+    return args
 
 
 def main():
