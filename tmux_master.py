@@ -11,6 +11,7 @@ from __future__ import unicode_literals
 import argparse
 import itertools
 import os
+import re
 
 import psh
 
@@ -18,7 +19,6 @@ ssh = psh.Program("ssh", _defer=False)
 tmux = psh.Program("tmux", _defer=False)
 
 # TODO: include master config
-# TODO: run slaves with user config
 MASTER_CONFIG = (
     # Use C-a as a prefix key in master session
     "set prefix C-a",
@@ -33,12 +33,41 @@ MASTER_CONFIG = (
 )
 
 
-def create_session(session, hosts):
+def get_user_config():
+    config_path = os.path.expanduser("~/.tmux.conf")
+
+    if not os.path.exists(config_path):
+        return ""
+
+    with open(config_path) as config:
+        return config.read()
+
+
+def create_slave_session(session, host, user_config):
+    if user_config:
+        temp_file = ssh(host,
+            'temp_file="$(mktemp)" && echo "$temp_file" && cat > "$temp_file"',
+            _stdin=user_config).stdout().strip()
+        slave_commands = r'\; source-file "{}"'.format(temp_file)
+        cleanup_commands = 'rm -f "{}";'.format(temp_file)
+    else:
+        slave_commands = ""
+        cleanup_commands = ""
+
+    tmux("new-window", "-t", session, "-n", host, "ssh -t {host} '"
+        'tmux has-session -t {session} || tmux new-session -d -s "{session}" {slave_commands}; '
+        '{cleanup_commands} exec tmux attach-session -t "{session}"\''.format(
+            host=host, session=session, slave_commands=slave_commands, cleanup_commands=cleanup_commands))
+
+
+def create_master_session(session, hosts):
+    user_config = get_user_config()
+
     commands = itertools.chain.from_iterable(
         ("; " + command).split(" ") for command in MASTER_CONFIG)
 
     if tmux("has-session", _ok_statuses=(0,1)).status():
-        tmux("new-session", "-d", "-s", session, *commands)
+        tmux("new-session", "-d", "-s", session, "-n", "master", *commands)
         existing_windows = set()
     else:
         existing_windows = set(
@@ -46,12 +75,8 @@ def create_session(session, hosts):
                 "list-windows", "-t", session, "-F", "#{window_name}", _defer=True))
 
     for host in hosts:
-        if host in existing_windows:
-            continue
-
-        tmux("new-window", "-t", session, "-n", host,
-            "ssh -t {host} 'tmux has-session -t {session} && exec tmux attach-session -t {session} || exec tmux new-session -s {session}'".format(
-                host=host, session=session))
+        if host not in existing_windows:
+            create_slave_session(session, host, user_config)
 
     tmux("select-window", "-t", session + ":0")
     os.execlp("tmux", "tmux", "attach-session", "-t", session)
@@ -87,7 +112,7 @@ def main():
     if args.kill:
         kill_session(args.session, args.hosts)
     else:
-        create_session(args.session, args.hosts)
+        create_master_session(args.session, args.hosts)
 
 
 if __name__ == "__main__":
