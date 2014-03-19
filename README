@@ -1,1 +1,1 @@
-A tool to run a master tmux session to control slave tmux sessions on the specified hosts
+A tool that runs a master tmux session to control slave tmux sessions on the specified hosts
