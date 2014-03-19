@@ -18,7 +18,6 @@ import psh
 ssh = psh.Program("ssh", _defer=False)
 tmux = psh.Program("tmux", _defer=False)
 
-# TODO: include master config
 MASTER_CONFIG = (
     # Use C-a as a prefix key in master session
     "set prefix C-a",
@@ -61,10 +60,13 @@ def create_slave_session(session, host, user_config):
 
 
 def create_master_session(session, hosts):
-    user_config = get_user_config()
+    master_config = list(MASTER_CONFIG)
+    master_config_path = os.path.expanduser("~/.tmux-master.conf")
+    if os.path.exists(master_config_path):
+        master_config.append("source-file {}".format(master_config_path))
 
     commands = itertools.chain.from_iterable(
-        ("; " + command).split(" ") for command in MASTER_CONFIG)
+        ("; " + command).split(" ") for command in master_config)
 
     if tmux("has-session", _ok_statuses=(0,1)).status():
         tmux("new-session", "-d", "-s", session, "-n", "master", *commands)
@@ -73,6 +75,8 @@ def create_master_session(session, hosts):
         existing_windows = set(
             window.strip() for window in tmux(
                 "list-windows", "-t", session, "-F", "#{window_name}", _defer=True))
+
+    user_config = get_user_config()
 
     for host in hosts:
         if host not in existing_windows:
