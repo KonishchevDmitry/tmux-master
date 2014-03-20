@@ -15,8 +15,10 @@ import re
 
 import psh
 
-ssh = psh.Program("ssh", _defer=False)
 tmux = psh.Program("tmux", _defer=False)
+ssh = psh.Program("ssh", _defer=False,
+    # Required if ssh uses persistent connections
+    _wait_for_output=False, _truncate_output=True)
 
 MASTER_CONFIG = (
     # Use C-a as a prefix key in master session
