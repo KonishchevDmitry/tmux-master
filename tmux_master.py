@@ -70,7 +70,7 @@ def create_master_session(session, hosts):
     commands = itertools.chain.from_iterable(
         ("; " + command).split(" ") for command in master_config)
 
-    if tmux("has-session", _ok_statuses=(0,1)).status():
+    if tmux("has-session", "-t", session, _ok_statuses=(0,1)).status():
         tmux("new-session", "-d", "-s", session, "-n", "master", *commands)
         existing_windows = set()
     else:
@@ -92,7 +92,7 @@ def kill_session(session, hosts):
     for host in hosts:
         ssh(host, "! tmux has-session -t {session} 2>/dev/null || tmux kill-session -t {session}".format(session=session))
 
-    if not tmux("has-session", _ok_statuses=(0,1)).status():
+    if not tmux("has-session", "-t", session, _ok_statuses=(0,1)).status():
         tmux("kill-session", "-t", session)
 
 
