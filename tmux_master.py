@@ -55,7 +55,7 @@ def create_slave_session(session, host, user_config):
         slave_commands = ""
         cleanup_commands = ""
 
-    tmux("new-window", "-t", session, "-n", host, "ssh -t {host} '"
+    tmux("new-window", "-t", session + ":", "-n", host, "ssh -t {host} '"
         'tmux has-session -t {session} || tmux new-session -d -s "{session}" {slave_commands}; '
         '{cleanup_commands} exec tmux attach-session -t "{session}"\''.format(
             host=host, session=session, slave_commands=slave_commands, cleanup_commands=cleanup_commands))
